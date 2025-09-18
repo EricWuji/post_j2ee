@@ -1,0 +1,14 @@
+spring:
+  security:
+    jwt:
+      key: "K7m#xL9@qR$vN2!pXwY8zQaB3cD5fGhJ6kMnPsU4tVrW1yZ0sEoIuHjClFgA"
+      expiration: 7
+  data:
+    redis:
+      port: 6379
+      database: 0
+  datasource:
+    username: root
+    password: 123456
+    url: jdbc:mysql://localhost:3306/luntan3
+    driver-class-name: com.mysql.cj.jdbc.Driver
