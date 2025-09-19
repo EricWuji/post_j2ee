@@ -12,8 +12,9 @@ import org.example.backend.entity.vo.BaseData;
 @AllArgsConstructor
 public class Account implements BaseData {
     @TableId(type = IdType.AUTO)
-    Integer id;
+    Integer accountId;
     String username;
     String password;
+    String email;
     boolean enabled;
 }

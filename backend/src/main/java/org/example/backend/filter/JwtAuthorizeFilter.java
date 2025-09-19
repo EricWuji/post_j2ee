@@ -28,7 +28,6 @@ public class JwtAuthorizeFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String token = request.getHeader("Authorization");
         DecodedJWT decodedJWT = utils.resolveJwt(token);
-//        System.out.println("decodedJWT: " + decodedJWT);
         if (decodedJWT != null) {
             UserDetails userDetails = utils.toUserDetails(decodedJWT);
             UsernamePasswordAuthenticationToken authenticationToken =
@@ -36,7 +35,6 @@ public class JwtAuthorizeFilter extends OncePerRequestFilter {
             authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             request.setAttribute("id", utils.toId(decodedJWT));
-            filterChain.doFilter(request, response);
         }
         filterChain.doFilter(request, response);
     }

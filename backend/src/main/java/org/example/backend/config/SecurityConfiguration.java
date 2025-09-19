@@ -2,11 +2,11 @@ package org.example.backend.config;
 
 import com.auth0.jwt.JWT;
 import jakarta.annotation.Resource;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.example.backend.entity.dto.Account;
 import org.example.backend.entity.vo.response.AuthorizeVO;
+import org.example.backend.filter.BannedAccountForumFilter;
 import org.example.backend.filter.JsonLoginFilter;
 import org.example.backend.filter.JwtAuthorizeFilter;
 import org.example.backend.service.AccountService;
@@ -24,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.IOException;
@@ -43,6 +44,9 @@ public class SecurityConfiguration {
     @Resource
     private AuthenticationConfiguration authenticationConfiguration;
 
+    @Resource
+    BannedAccountForumFilter bannedAccountForumFilter;
+
     @Bean
     public JsonLoginFilter jsonLoginFilter() throws Exception {
         JsonLoginFilter filter = new JsonLoginFilter();
@@ -57,7 +61,7 @@ public class SecurityConfiguration {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .authorizeHttpRequests(conf -> {
-                    conf.requestMatchers("/api/auth/**").permitAll();
+                    conf.requestMatchers("/api/auth/**", "/error").permitAll();
                     conf.anyRequest().authenticated();
                 })
                 .logout(conf -> {
@@ -70,6 +74,7 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(conf ->
                         conf.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterAfter(bannedAccountForumFilter, AuthenticationFilter.class)
                 .addFilterBefore(jwtAuthorizeFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAt(jsonLoginFilter(), UsernamePasswordAuthenticationFilter.class)
                 .build();
@@ -77,23 +82,25 @@ public class SecurityConfiguration {
 
     public void onAccessDenied(HttpServletRequest request,
                                HttpServletResponse response,
-                               AccessDeniedException exception) throws IOException, ServletException {
+                               AccessDeniedException exception) throws IOException {
         response.setContentType("application/json;charset=utf-8");
         response.getWriter().write(Result.forbidden(exception.getMessage()).asJsonString());
     }
 
     public void onUnauthorized(HttpServletRequest request,
                                HttpServletResponse response,
-                               AuthenticationException exception) throws IOException, ServletException {
+                               AuthenticationException exception) throws IOException {
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write(Result.unAuthorized(exception.getMessage()).asJsonString());
     }
 
-    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+    public void onAuthenticationSuccess(HttpServletRequest request,
+                                        HttpServletResponse response,
+                                        Authentication authentication) throws IOException {
         response.setContentType("application/json;charset=UTF-8");
         UserDetails user = (UserDetails) authentication.getPrincipal();
         Account account = accountService.findUserByUsername(user.getUsername());
-        String token = jwtUtils.createJwt(user, account.getId(), account.getUsername());
+        String token = jwtUtils.createJwt(user, account.getAccountId(), account.getUsername());
         AuthorizeVO vo = account.asViewObject(AuthorizeVO.class, v -> {
             v.setExpiration(JWT.decode(token).getExpiresAt());
             v.setToken(token);
@@ -101,7 +108,9 @@ public class SecurityConfiguration {
         response.getWriter().write(Result.success(vo).asJsonString());
     }
 
-    public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+    public void onLogoutSuccess(HttpServletRequest request,
+                                HttpServletResponse response,
+                                Authentication authentication) throws IOException {
         response.setContentType("application/json;charset=UTF-8");
         PrintWriter printWriter = response.getWriter();
         String authorization = request.getHeader("Authorization");

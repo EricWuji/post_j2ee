@@ -5,5 +5,5 @@ import org.apache.ibatis.annotations.Mapper;
 import org.example.backend.entity.dto.Account;
 
 @Mapper
-public interface UserMapper extends BaseMapper<Account> {
+public interface AccountMapper extends BaseMapper<Account> {
 }

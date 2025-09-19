@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Dashboard from '../components/Dashboard.vue'
+import Forum from "@/views/Forum.vue";
 
 const routes = [
     {
@@ -17,7 +18,11 @@ const routes = [
         name: 'Dashboard',
         component: Dashboard,
         meta: { requiresAuth: true }
-    }
+    },
+    {
+        path: '/forum/:forumId',
+        component: Forum
+    },
 ]
 
 const router = createRouter({
