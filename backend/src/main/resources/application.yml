@@ -1,4 +1,13 @@
 spring:
+  mail:
+    host: smtp.163.com
+    username: 13616725327@163.com
+    password: NAUeWiBZUGDUCMcK
+  rabbitmq:
+    addresses: localhost:5672
+    username: admin
+    password: admin
+    virtual-host: /
   security:
     jwt:
       key: "K7m#xL9@qR$vN2!pXwY8zQaB3cD5fGhJ6kMnPsU4tVrW1yZ0sEoIuHjClFgA"

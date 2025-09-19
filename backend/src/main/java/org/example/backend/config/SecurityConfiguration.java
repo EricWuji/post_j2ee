@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.example.backend.entity.dto.Account;
 import org.example.backend.entity.vo.response.AuthorizeVO;
+import org.example.backend.filter.JsonLoginFilter;
 import org.example.backend.filter.JwtAuthorizeFilter;
 import org.example.backend.service.AccountService;
 import org.example.backend.utils.JwtUtils;
@@ -14,6 +15,8 @@ import org.example.backend.utils.Result;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -37,6 +40,19 @@ public class SecurityConfiguration {
     @Resource
     AccountService accountService;
 
+    @Resource
+    private AuthenticationConfiguration authenticationConfiguration;
+
+    @Bean
+    public JsonLoginFilter jsonLoginFilter() throws Exception {
+        JsonLoginFilter filter = new JsonLoginFilter();
+        filter.setAuthenticationManager(authenticationManager(authenticationConfiguration));
+        filter.setFilterProcessesUrl("/api/auth/login");
+        filter.setAuthenticationSuccessHandler(this::onAuthenticationSuccess);
+        filter.setAuthenticationFailureHandler(this::onUnauthorized);
+        return filter;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
@@ -44,10 +60,6 @@ public class SecurityConfiguration {
                     conf.requestMatchers("/api/auth/**").permitAll();
                     conf.anyRequest().authenticated();
                 })
-                .formLogin(conf -> conf.loginProcessingUrl("/api/auth/login")
-                        .successHandler(this::onAuthenticationSuccess)
-                        .failureHandler(this::onUnauthorized)
-                        .permitAll())
                 .logout(conf -> {
                     conf.logoutUrl("/api/auth/logout");
                     conf.logoutSuccessHandler(this::onLogoutSuccess);
@@ -59,6 +71,7 @@ public class SecurityConfiguration {
                 .sessionManagement(conf ->
                         conf.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthorizeFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAt(jsonLoginFilter(), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
@@ -82,7 +95,7 @@ public class SecurityConfiguration {
         Account account = accountService.findUserByUsername(user.getUsername());
         String token = jwtUtils.createJwt(user, account.getId(), account.getUsername());
         AuthorizeVO vo = account.asViewObject(AuthorizeVO.class, v -> {
-            v.setExpiration(JWT.decode(v.getToken()).getExpiresAt());
+            v.setExpiration(JWT.decode(token).getExpiresAt());
             v.setToken(token);
         });
         response.getWriter().write(Result.success(vo).asJsonString());
@@ -98,4 +111,12 @@ public class SecurityConfiguration {
             printWriter.write(Result.failure(400, "failed").asJsonString());
         }
     }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+            throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+
 }

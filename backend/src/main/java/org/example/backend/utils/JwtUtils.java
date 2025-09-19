@@ -78,6 +78,7 @@ public class JwtUtils {
 
     public DecodedJWT resolveJwt(String headerToken) {
         String token = convertToken(headerToken);
+//        System.out.println(headerToken);
         if  (token == null) {
             return null;
         }
