@@ -23,6 +23,12 @@ const routes = [
         path: '/forum/:forumId',
         component: Forum
     },
+    {
+        path: '/post/:postId',
+        name: 'PostDetail',
+        component: () => import('@/views/PostDetail.vue')
+    }
+
 ]
 
 const router = createRouter({

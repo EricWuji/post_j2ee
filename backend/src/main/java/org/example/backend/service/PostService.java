@@ -10,4 +10,7 @@ import java.util.List;
 public interface PostService extends IService<Post> {
     String addPost(PostRequestVO vo, Integer userId);
     List<PostResponseVO> getAllPostsByForumId(Integer forumId);
+    List<PostResponseVO> getAllPostsByUserId(Integer userId);
+    String deletePostById(Integer postId);
+    String topPostById(Integer postId);
 }

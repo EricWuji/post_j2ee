@@ -15,4 +15,14 @@ public class ForumServiceImpl extends ServiceImpl<ForumMapper, Forum> implements
         queryWrapper.eq("forum_id", id);
         return this.getOne(queryWrapper);
     }
+
+    @Override
+    public String findForumNameById(int id) {
+        Forum forum = this.findForumById(id);
+        if (forum != null) {
+            return forum.getForumName();
+        } else {
+            return null;
+        }
+    }
 }

@@ -263,8 +263,10 @@ const resetForm = () => {
 
 // 模拟跳转到帖子详情（后续可扩展）
 const viewPostDetail = (post) => {
-  console.log('查看帖子详情:', post)
-  ElMessage.info('功能待开发：跳转到帖子详情页')
+  router.push({
+    name: 'PostDetail',
+    params: { postId: post.postId }
+  })
 }
 
 onMounted(() => {
