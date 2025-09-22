@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import org.example.backend.entity.dto.Account;
 import org.example.backend.entity.vo.request.EmailRegisterVO;
+import org.example.backend.entity.vo.request.EmailResetVO;
 import org.example.backend.entity.vo.response.AccountResponseVO;
 import org.example.backend.entity.vo.response.ForumAvailableResponseVO;
 import org.example.backend.mapper.AccountMapper;
@@ -67,20 +68,23 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
     }
 
     @Override
-    public String registerEmailVerifyCode(String type, String email, String ip) {
+    public String emailVerifyCode(String type, String email, String ip) {
         synchronized (ip.intern()) {
-            if (!verifyLimit(ip)) {
-                return "请求过于频繁，请稍后再试";
+            if (!verifyLimit(ip)) return "请求过于频繁，请稍后再试";
+            if ("register".equals(type)) {
+                if (existsAccountByEmail(email)) return "该邮箱已被注册";
+            } else {
+                if (!existsAccountByEmail(email)) return "该邮箱未注册";
             }
             Random random = new Random();
-            int code = random.nextInt(89999) + 10000;
-            Map<String, Object> map = Map.of("type", type, "email", email, "code", code);
+            Integer code = random.nextInt(899999) + 100000;
+            String key = Const.VERIFY_EMAIL_LIMIT + email;
+            if (!flowUtils.limitOnceRequest(key, 60)) return "邮件已发送";
+            Map<String, Object> map = Map.of("type", type, "code", code, "email", email);
+            stringRedisTemplate.opsForValue().set(Const.VERIFY_EMAIL_CODE + email, code.toString(), 5, TimeUnit.MINUTES);
             amqpTemplate.convertAndSend("mail", map);
-            stringRedisTemplate.opsForValue()
-                    .set(Const.VERIFY_EMAIL_CODE + email, String.valueOf(code), 3, TimeUnit.MINUTES);
             return null;
         }
-
     }
 
     @Override
@@ -99,6 +103,24 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
             return null;
         } else {
             return "注册失败，请稍后再试";
+        }
+    }
+
+    @Override
+    public String resetPassword(EmailResetVO emailResetVO) {
+        String email = emailResetVO.getEmail();
+        String code = stringRedisTemplate.opsForValue().get(Const.VERIFY_EMAIL_CODE + email);
+        if (code == null) return "请先获取邮箱验证码";
+        if (!code.equals(emailResetVO.getCode())) return "验证码错误或已过期";
+        Account account = this.getAccountByEmail(emailResetVO.getEmail());
+        if (account == null || !account.getEmail().equals(email)) return "用户名与邮箱不匹配";
+        String password = encoder.encode(emailResetVO.getNewPassword());
+        account.setPassword(password);
+        if (this.updateById(account)) {
+            stringRedisTemplate.delete(Const.VERIFY_EMAIL_CODE + email);
+            return null;
+        } else {
+            return "重置密码失败，请稍后再试";
         }
     }
 
@@ -181,12 +203,16 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
 
     private List<ForumAvailableResponseVO> convertToAvailableResponseVO(List<Integer> forumIds) {
         return forumIds.stream()
-                .map(forumId -> {
-                    ForumAvailableResponseVO vo = new ForumAvailableResponseVO();
-                    vo.setForumId(forumId);
-                    vo.setForumName(forumService.findForumNameById(forumId));
-                    return vo;
-                })
+                .map(forumId -> ForumAvailableResponseVO.builder()
+                        .forumId(forumId)
+                        .forumName(forumService.findForumNameById(forumId))
+                        .build())
                 .toList();
+    }
+
+    private Account getAccountByEmail(String email) {
+        QueryWrapper<Account> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("email", email);
+        return this.getOne(queryWrapper);
     }
 }

@@ -23,9 +23,10 @@ public class AccountForumBanServiceImpl extends ServiceImpl<AccountForumBanMappe
     @Override
     public String addAccountIdAndForumId(Integer accountId, Integer forumId) {
         if (this.existsAccountIdAndForumId(accountId,forumId)) return "User is already banned in this forum";
-        AccountForumBan accountForumBan = new AccountForumBan();
-        accountForumBan.setAccountId(accountId);
-        accountForumBan.setForumId(forumId);
+        AccountForumBan accountForumBan = AccountForumBan.builder()
+                .accountId(accountId)
+                .forumId(forumId)
+                .build();
         if (this.save(accountForumBan)) {
             return null;
         } else {

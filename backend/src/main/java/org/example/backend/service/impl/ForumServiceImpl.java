@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class ForumServiceImpl extends ServiceImpl<ForumMapper, Forum> implements ForumService {
+
     @Override
     public Forum findForumById(int id) {
         QueryWrapper<Forum> queryWrapper = new QueryWrapper<>();

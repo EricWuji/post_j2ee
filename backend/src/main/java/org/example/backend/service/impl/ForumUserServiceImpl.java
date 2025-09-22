@@ -45,26 +45,24 @@ public class ForumUserServiceImpl extends ServiceImpl<ForumUserMapper, ForumUser
         if (this.count(queryWrapper) > 0) {
             return "User is already a member of this forum";
         } else {
-            ForumUser forumUser = new ForumUser();
-            forumUser.setForumId(forumId);
-            forumUser.setUserId(userId);
+            ForumUser forumUser = ForumUser.builder()
+                            .userId(userId)
+                            .forumId(forumId)
+                            .build();
             if (this.save(forumUser)) {
                 return null;
             } else {
                 return "Failed to add user to this forum";
             }
         }
-
     }
 
     private List<ForumAvailableResponseVO> convertToResponseVO(List<Integer> forumIds) {
         return forumIds.stream()
-                .map(forumId -> {
-                    ForumAvailableResponseVO vo = new ForumAvailableResponseVO();
-                    vo.setForumId(forumId);
-                    vo.setForumName(forumService.findForumNameById(forumId));
-                    return vo;
-                })
+                .map(forumId -> ForumAvailableResponseVO.builder()
+                        .forumId(forumId)
+                        .forumName(forumService.findForumNameById(forumId))
+                        .build())
                 .toList();
     }
 

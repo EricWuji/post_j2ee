@@ -40,6 +40,10 @@
             登录
           </el-button>
         </el-form-item>
+        <!-- 忘记密码链接 -->
+        <div style="text-align: center; margin: 15px 0;">
+          <el-link type="primary" @click="showForgotPassword = true">忘记密码？</el-link>
+        </div>
       </el-form>
 
       <!-- 注册表单 -->
@@ -105,6 +109,55 @@
           已有账号？去登录
         </el-link>
       </div>
+
+      <!-- 忘记密码弹窗 -->
+      <el-dialog
+          v-model="showForgotPassword"
+          title="重置密码"
+          width="400px"
+      >
+        <el-form
+            :model="forgotForm"
+            :rules="forgotRules"
+            ref="forgotFormRef"
+            label-width="80px"
+        >
+          <el-form-item label="邮箱" prop="email">
+            <el-input v-model="forgotForm.email" placeholder="请输入注册邮箱"></el-input>
+          </el-form-item>
+
+          <el-form-item label="验证码" prop="code">
+            <el-input v-model="forgotForm.code" placeholder="请输入验证码">
+              <template #append>
+                <el-button
+                    :disabled="countdown > 0 || isSendingCode"
+                    @click="sendCodeForReset"
+                >
+                  {{ countdown > 0 ? `${countdown}s 后重发` : '获取验证码' }}
+                </el-button>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item label="新密码" prop="newPassword">
+            <el-input
+                v-model="forgotForm.newPassword"
+                type="password"
+                placeholder="请输入新密码"
+                show-password
+            ></el-input>
+          </el-form-item>
+        </el-form>
+
+        <template #footer>
+    <span class="dialog-footer">
+      <el-button @click="showForgotPassword = false">取消</el-button>
+      <el-button type="primary" @click="handleResetPassword">
+        重置密码
+      </el-button>
+    </span>
+        </template>
+      </el-dialog>
     </el-card>
   </div>
 </template>
@@ -112,7 +165,6 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
 import request from "@/api/request.js";
 import { ElMessage } from 'element-plus'
 
@@ -226,7 +278,6 @@ const sendCode = async () => {
     console.log('邮箱值：', registerForm.email)
     console.log('邮箱校验结果：', error)
     console.log('表单校验失败:', error)
-    return // 不继续发送请求
   } finally {
     isSendingCode.value = false
   }
@@ -281,6 +332,89 @@ const handleRegister = async () => {
 // tab切换事件（可选）
 const handleTabClick = (tab) => {
   // 可以在这里做额外逻辑，比如清空表单等
+}
+// 忘记密码相关
+const showForgotPassword = ref(false)
+const forgotFormRef = ref(null)
+
+const forgotForm = reactive({
+  email: '',
+  code: '',
+  newPassword: ''
+})
+
+const forgotRules = {
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱地址', trigger: ['blur', 'change'] }
+  ],
+  code: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { len: 6, message: '验证码为6位数字', trigger: 'blur' }
+  ],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '密码长度在6-20位之间', trigger: 'blur' }
+  ]
+}
+
+// 发送重置验证码
+const sendCodeForReset = async () => {
+  try {
+    await forgotFormRef.value.validateField('email')
+
+    isSendingCode.value = true
+    const res = await request.get('/api/auth/ask-code', {
+      params: {
+        email: forgotForm.email,
+        type: 'resetPassword'
+      }
+    })
+
+    if (res.code === 200) {
+      ElMessage.success('验证码已发送，请查收邮箱')
+      startCountdown()
+    } else {
+      ElMessage.error(res.message || '发送失败')
+    }
+  } catch (error) {
+    console.log('邮箱校验失败:', error)
+    return
+  } finally {
+    isSendingCode.value = false
+  }
+}
+
+// 重置密码
+const handleResetPassword = async () => {
+  await forgotFormRef.value.validate(async (valid) => {
+    if (!valid) return
+
+    loading.value = true
+    try {
+      const res = await request.post('/api/auth/reset-password', {
+        email: forgotForm.email,
+        code: forgotForm.code,
+        newPassword: forgotForm.newPassword
+      })
+
+      if (res.code === 200) {
+        ElMessage.success('密码重置成功！请重新登录')
+        showForgotPassword.value = false
+        // 清空表单
+        forgotForm.email = ''
+        forgotForm.code = ''
+        forgotForm.newPassword = ''
+      } else {
+        ElMessage.error(res.message || '重置失败')
+      }
+    } catch (error) {
+      ElMessage.error('网络错误，请稍后重试')
+      console.error(error)
+    } finally {
+      loading.value = false
+    }
+  })
 }
 </script>
 

@@ -10,7 +10,7 @@ import org.hibernate.validator.constraints.Length;
 public class EmailRegisterVO implements BaseData {
     @Email
     String email;
-    @Length(min = 5, max = 5)
+    @Length(min = 6, max = 6)
     String code;
     @Pattern(regexp = "^[a-zA-Z0-9]+$")
     @Length(max = 10, min = 1)

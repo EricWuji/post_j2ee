@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import org.example.backend.entity.vo.request.EmailRegisterVO;
+import org.example.backend.entity.vo.request.EmailResetVO;
 import org.example.backend.service.AccountService;
 import org.example.backend.utils.Result;
 import org.springframework.validation.annotation.Validated;
@@ -25,12 +26,17 @@ public class AuthorizeController {
     public Result<Void> askCode(@RequestParam @Email String email,
                                 @RequestParam @Pattern(regexp = "(register|resetPassword)") String type,
                                 HttpServletRequest request) {
-        return messageHandler(() -> accountService.registerEmailVerifyCode(type, email, request.getRemoteAddr()));
+        return messageHandler(() -> accountService.emailVerifyCode(type, email, request.getRemoteAddr()));
     }
 
     @PostMapping("/register")
     public Result<Void> register(@RequestBody @Valid EmailRegisterVO vo) {
         return messageHandler(() -> accountService.registerEmailAccount(vo));
+    }
+
+    @PostMapping("/reset-password")
+    public Result<Void> resetPassword(@RequestBody @Valid EmailResetVO vo) {
+        return messageHandler(() -> accountService.resetPassword(vo));
     }
 
     private Result<Void> messageHandler(Supplier<String> supplier) {
